@@ -1,8 +1,6 @@
 package ipk
 
 import (
-	"bytes"
-	"encoding/binary"
 	"errors"
 	"sync"
 
@@ -40,7 +38,7 @@ func (dev *FreqDevice) deviceIoControl(direction, request byte, bytes []byte, le
 	}
 	if err == nil {
 		dev.mutexUSB.Lock()
-		err = windows.DeviceIoControl(dev.handle, ioControlCode, &vcrq[0], uint32(len(vcrq)), bytes, length, &bytesReturned, nil)
+		err = windows.DeviceIoControl(dev.handle, ioControlCode, &vcrq[0], uint32(len(vcrq)), &bytes[0], uint32(length), &bytesReturned, nil)
 		dev.mutexUSB.Unlock()
 	}
 	return

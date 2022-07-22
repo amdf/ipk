@@ -1,6 +1,6 @@
 module ipk
 
-go 1.18
+go 1.12
 
 require (
 	github.com/gotmc/libusb v1.0.21

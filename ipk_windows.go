@@ -2,7 +2,6 @@ package ipk
 
 import (
 	"fmt"
-	"time"
 
 	"golang.org/x/sys/windows"
 )
