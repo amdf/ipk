@@ -51,15 +51,16 @@ func (dev *FreqDevice) isADCEnabled() (enabled bool, err error) {
 		return
 	}
 
-	var adcEnabled []byte
+	adcEnabled := make([]byte, 1)
 
 	err = dev.deviceIoControl(VendorRequestInput, 0xB2, adcEnabled, 1)
 
 	if nil != err {
 		err = errors.New("FreqDevice.IsADCEnabled():" + err.Error())
+		return
 	}
 
-	if len(adcEnabled) > 0 && adcEnabled[0] > 0 {
+	if adcEnabled[0] > 0 {
 		enabled = true
 	}
 
@@ -82,7 +83,7 @@ func (dev *FreqDevice) UpdateADC() (err error) {
 
 	bdat := make([]byte, dataADCsize)
 
-	err = dev.deviceIoControl(VendorRequestInput, 0xB1, bdat, dataADCsize)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB1, bdat, len(bdat))
 
 	if nil != err {
 		err = errors.New("FreqDevice.UpdateADC():" + err.Error())

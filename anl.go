@@ -234,6 +234,7 @@ func (dev *AnalogDevice) getDataUSB(data *analogDeviceData) (err error) {
 
 	if nil != err {
 		err = errors.New("AnalogDevice.getDataUSB():" + err.Error())
+		return
 	}
 
 	data.setFromBytes(asbytes)

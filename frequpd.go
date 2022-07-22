@@ -176,7 +176,7 @@ func (dev *FreqDevice) GetVersion() (major, minor, patch uint32, err error) {
 
 	bdat := make([]byte, debugADCsize)
 
-	err = dev.deviceIoControl(VendorRequestInput, 0xB4, bdat, debugADCsize)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB4, bdat, len(bdat))
 
 	if nil != err {
 		err = errors.New("FreqDevice.GetVersion():" + err.Error())

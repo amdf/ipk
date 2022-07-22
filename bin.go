@@ -348,21 +348,18 @@ func (dev *BinaryDevice) getDataUSB() (bindata binaryData, err error) {
 		return
 	}
 
-	data := make([]byte, 8)
+	binaryDataSize := len(bindata.data)
+	data := make([]byte, binaryDataSize)
 
-	err = dev.deviceIoControl(VendorRequestInput, 0xB0, data, 8)
-
-	bindata.data[0] = data[0]
-	bindata.data[1] = data[1]
-	bindata.data[2] = data[2]
-	bindata.data[3] = data[3]
-	bindata.data[4] = data[4]
-	bindata.data[5] = data[5]
-	bindata.data[6] = data[6]
-	bindata.data[7] = data[7]
+	err = dev.deviceIoControl(VendorRequestInput, 0xB0, data, len(data))
 
 	if nil != err {
 		err = errors.New("BinaryDevice.getDataUSB():" + err.Error())
+		return
+	}
+
+	for i := 0; i < binaryDataSize; i++ {
+		bindata.data[i] = data[i]
 	}
 
 	return
