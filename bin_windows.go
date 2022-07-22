@@ -1,6 +1,11 @@
 package ipk
 
-import "golang.org/x/sys/windows"
+import (
+	"errors"
+	"sync"
+
+	"golang.org/x/sys/windows"
+)
 
 //BinaryDevice это тип для работы с ФДС-3
 type BinaryDevice struct {
