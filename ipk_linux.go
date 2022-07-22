@@ -1,17 +1,8 @@
 package ipk
 
 import (
-	"time"
-
 	"github.com/gotmc/libusb"
 )
-
-//Device - интерфейс устройств, составных частей ФПС-3
-type Device interface {
-	Open(ok bool)
-	Close()
-	Active() bool
-}
 
 //IPK все три устройства в одной структуре для удобства
 type IPK struct {
@@ -39,22 +30,6 @@ type DeviceDescriptor struct {
 	SerialNumberIndex   uint8
 	NumConfigurations   uint8
 }*/
-
-//UBS-идентификаторы оборудования ИПК-3
-const (
-	IDVendorElmeh     = uint16(0x0547)
-	IDProductANL12bit = 0x0892 // ФАС-3 12 бит ЦАП
-	IDProductANL16bit = 0x0894 // ФАС-3 16 бит ЦАП
-	IDProductBIN      = 0x0891 // ФДС-3
-	IDProductFRQ      = 0x0893 // ФЧС-3
-)
-
-//Максимально допустимое время реакции во время обращения к оборудованию по USB.
-const maxDelayUSB = 100 * time.Millisecond
-const errUsbTimeout = `Слишком большое время отклика по USB`
-
-const usbDirectionIn = byte(0xC0)
-const usbDirectionOut = byte(0x40)
 
 //USBOpen соединяет приложение с устройством по USB.
 //Возвращает хэндл устройства, если устройство подключено и его удалось открыть.

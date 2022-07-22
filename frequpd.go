@@ -80,14 +80,7 @@ func (dev *FreqDevice) sendUpdateCommand(bytes []byte) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB4)
-
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &bytes[0], uint32(len(bytes)),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB4, bytes, len(bytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.sendUpdateCommand():" + err.Error())
@@ -181,14 +174,10 @@ func (dev *FreqDevice) GetVersion() (major, minor, patch uint32, err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB4)
-
 	bdat := make([]byte, debugADCsize)
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &bdat[0], uint32(debugADCsize),
-		&bytesReturned, nil)
+
+	err = dev.deviceIoControl(VendorRequestInput, 0xB4, bdat, debugADCsize)
+
 	if nil != err {
 		err = errors.New("FreqDevice.GetVersion():" + err.Error())
 		return

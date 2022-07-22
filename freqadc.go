@@ -26,18 +26,13 @@ func (dev *FreqDevice) EnableADC(enableADC bool) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB2)
-
-	var enb byte
+	var adcEnabled byte
 	if enableADC {
-		enb = 1
+		adcEnabled = 1
 	}
 
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &enb, uint32(1),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB2, []byte{adcEnabled}, 1)
+
 	if nil != err {
 		err = errors.New("FreqDevice.setEnableADC():" + err.Error())
 	}
@@ -56,22 +51,15 @@ func (dev *FreqDevice) isADCEnabled() (enabled bool, err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB2)
+	var adcEnabled []byte
 
-	adcEnabled := new(byte)
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), adcEnabled, uint32(1),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB2, adcEnabled, 1)
 
 	if nil != err {
 		err = errors.New("FreqDevice.IsADCEnabled():" + err.Error())
 	}
 
-	if 0 == *adcEnabled {
-		enabled = false
-	} else {
+	if len(adcEnabled) > 0 && adcEnabled[0] > 0 {
 		enabled = true
 	}
 
@@ -92,14 +80,10 @@ func (dev *FreqDevice) UpdateADC() (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB1)
-
 	bdat := make([]byte, dataADCsize)
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &bdat[0], uint32(dataADCsize),
-		&bytesReturned, nil)
+
+	err = dev.deviceIoControl(VendorRequestInput, 0xB1, bdat, dataADCsize)
+
 	if nil != err {
 		err = errors.New("FreqDevice.UpdateADC():" + err.Error())
 		return
