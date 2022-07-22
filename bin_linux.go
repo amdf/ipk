@@ -1,11 +1,16 @@
 package ipk
 
-import "golang.org/x/sys/windows"
+import (
+	"errors"
+	"sync"
+
+	"github.com/gotmc/libusb"
+)
 
 //BinaryDevice это тип для работы с ФДС-3
 type BinaryDevice struct {
 	Device
-	handle   windows.Handle
+	handle   *libusb.DeviceHandle
 	mutexUSB sync.Mutex
 }
 
@@ -15,23 +20,16 @@ func (dev *BinaryDevice) deviceIoControl(direction, request byte, bytes []byte, 
 		err = errors.New("deviceIoControl():" + binErrorNoDevice)
 		return
 	}
-	ioControlCode := IoctlEZUSBVendorOrClassRequest()
-	var vcrq []byte
-	var bytesReturned uint32
-
+	dev.mutexUSB.Lock()
 	switch direction {
 	case VendorRequestOutput:
-		vcrq = MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
+		_, err = dev.handle.ControlTransfer(VendorRequestOutput, request, 0, 0, bytes, length, int(maxDelayUSB.Milliseconds()))
 	case VendorRequestInput:
-		vcrq = MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB0)
+		_, err = dev.handle.ControlTransfer(VendorRequestInput, request, 0, 0, bytes, length, int(maxDelayUSB.Milliseconds()))
 	default:
 		err = errors.New("unknown deviceIoControl transfer")
 	}
-	if err == nil {
-		dev.mutexUSB.Lock()
-		err = windows.DeviceIoControl(dev.handle, ioControlCode, &vcrq[0], uint32(len(vcrq)), &bytes[0], uint32(length), &bytesReturned, nil)
-		dev.mutexUSB.Unlock()
-	}
+	dev.mutexUSB.Unlock()
 	return
 }
 
@@ -40,7 +38,7 @@ func (dev *BinaryDevice) opened() bool {
 	if nil == dev {
 		return false
 	}
-	return dev.handle != windows.InvalidHandle
+	return dev.handle != nil
 }
 
 /////////////////////ИНТЕРФЕЙСНЫЕ ФУНКЦИИ/////////////////////
@@ -50,8 +48,9 @@ func (dev *BinaryDevice) Close() {
 	if dev == nil {
 		return
 	}
-	windows.CloseHandle(dev.handle)
-	dev.handle = windows.InvalidHandle
+	dev.handle.Close()
+
+	dev.handle = nil
 }
 
 //Active показывает активно ли соединение с ФДС-3
@@ -60,11 +59,7 @@ func (dev *BinaryDevice) Active() (ok bool) {
 		return
 	}
 	if dev.opened() {
-		vendorID, productID := GetVendorProduct(dev.handle)
-		if IDVendorElmeh == vendorID && IDProductBIN == productID {
-			ok = true
-			return
-		}
+		ok = true
 	}
 	return
 }
