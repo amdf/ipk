@@ -1,5 +1,12 @@
 package ipk
 
+import (
+	"errors"
+	"sync"
+
+	"golang.org/x/sys/windows"
+)
+
 //AnalogDevice это тип для работы с ФАС-3
 type AnalogDevice struct {
 	Device
@@ -51,23 +58,6 @@ func (dev *AnalogDevice) Close() {
 	}
 	windows.CloseHandle(dev.handle)
 	dev.handle = windows.InvalidHandle
-}
-
-//Open соединиться с ФАС-3
-func (dev *AnalogDevice) Open() (ok bool) {
-	if dev == nil {
-		return
-	}
-	dev.handle, ok = USBOpen(IDProductANL12bit)
-	if ok {
-		dev.idProductVariant = IDProductANL12bit
-	} else {
-		dev.handle, ok = USBOpen(IDProductANL16bit)
-		if ok {
-			dev.idProductVariant = IDProductANL16bit
-		}
-	}
-	return
 }
 
 //Active показывает активно ли соединение с ФАС-3
