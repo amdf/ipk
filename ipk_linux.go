@@ -6,10 +6,9 @@ import (
 
 //IPK все три устройства в одной структуре для удобства
 type IPK struct {
-	//TODO: вернуть
-	// AnalogDev *AnalogDevice
-	// BinDev    *BinaryDevice
-	// FreqDev   *FreqDevice
+	AnalogDev *AnalogDevice
+	BinDev    *BinaryDevice
+	FreqDev   *FreqDevice
 }
 
 /*
