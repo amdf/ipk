@@ -26,9 +26,9 @@ func (dev *BinaryDevice) deviceIoControl(direction, request byte, bytes []byte, 
 
 	switch direction {
 	case VendorRequestOutput:
-		vcrq = MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
+		vcrq = MakeVendorOrClassRequestControlStruct(0, 2, 0, request)
 	case VendorRequestInput:
-		vcrq = MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB0)
+		vcrq = MakeVendorOrClassRequestControlStruct(1, 2, 0, request)
 	default:
 		err = errors.New("unknown deviceIoControl transfer")
 	}
