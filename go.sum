@@ -1,0 +1,6 @@
+github.com/gotmc/libusb v1.0.21 h1:ArZW8U24z0tg4HdjfxeH25k2ewXB7cIgwDdD2duW3RI=
+github.com/gotmc/libusb v1.0.21/go.mod h1:wIr1r2IcxTM5OXqnNRuecL3F4IMjFJmUf+6pSge3OsY=
+github.com/gotmc/libusb v1.0.22 h1:+5cE9IHMcJF2R39vVRff0TK5jK4TW0pk2FQNyoxMn7M=
+github.com/gotmc/libusb v1.0.22/go.mod h1:fa+kQZl2bW/pna0xryZpEE/ckwD8gqOWjNCewHGp+Aw=
+golang.org/x/sys v0.11.0 h1:eG7RXZHdqOJ1i+0lgLgCpSXAp6M3LYlAo6osgSi0xOM=
+golang.org/x/sys v0.11.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=

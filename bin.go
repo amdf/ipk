@@ -3,10 +3,7 @@ package ipk
 import (
 	"encoding/binary"
 	"errors"
-	"sync"
 	"time"
-
-	"golang.org/x/sys/windows"
 )
 
 const binErrorNoConnection = `Нет соединения с ФДС-3`
@@ -26,8 +23,6 @@ const (
 	IFMax         = 8
 )
 
-const binSignalsSize = 6
-
 type binaryData struct {
 	data [8]byte
 }
@@ -46,25 +41,6 @@ func (data *binaryData) SetUint64(val uint64) {
 }
 
 /////////////////////////////////////////////////////////////////////
-
-//BinaryDevice это тип для работы с ФДС-3
-type BinaryDevice struct {
-	Device
-	handle   windows.Handle
-	mutexUSB sync.Mutex
-}
-
-//Потокобезопасный обмен данными с микроконтроллером по USB.
-func (dev *BinaryDevice) deviceIoControl(ioControlCode uint32, inBuffer *byte, inBufferSize uint32, outBuffer *byte, outBufferSize uint32, bytesReturned *uint32, overlapped *windows.Overlapped) (err error) {
-	if nil == dev {
-		err = errors.New("deviceIoControl():" + binErrorNoDevice)
-		return
-	}
-	dev.mutexUSB.Lock()
-	err = windows.DeviceIoControl(dev.handle, ioControlCode, inBuffer, inBufferSize, outBuffer, outBufferSize, bytesReturned, overlapped)
-	dev.mutexUSB.Unlock()
-	return
-}
 
 //Set10V позволяет установить значение val
 //на один из 10 В выходных сигналов на ФДС-3.
@@ -269,17 +245,16 @@ func (dev *BinaryDevice) GetOutputIF() (state uint8, err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB1)
+	getstate := make([]byte, 1)
 
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &state, uint32(1),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB1, getstate, 1)
 
 	if nil != err {
 		err = errors.New("GetOutputIF():" + err.Error())
+		return
 	}
+
+	state = getstate[0]
 
 	return
 }
@@ -300,13 +275,7 @@ func (dev *BinaryDevice) SetIF(state uint8) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB1)
-
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &state, uint32(1),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB1, []byte{state}, 1)
 
 	if nil != err {
 		err = errors.New("SetIF():" + err.Error())
@@ -326,21 +295,16 @@ func (dev *BinaryDevice) GetOutputTURT() (val bool, err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB2)
+	state := make([]byte, 1)
 
-	var state uint8
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &state, uint32(1),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB2, state, 1)
 
 	if nil != err {
 		err = errors.New("GetOutputTURT():" + err.Error())
 		return
 	}
 
-	val = (state != 0)
+	val = (state[0] != 0)
 
 	return
 }
@@ -356,19 +320,13 @@ func (dev *BinaryDevice) SetTURT(val bool) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB2)
-
 	var state uint8
-	var bytesReturned uint32
 
 	if val {
 		state = 1
 	}
 
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &state, uint32(1),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB2, []byte{state}, 1)
 
 	if nil != err {
 		err = errors.New("SetTURT():" + err.Error())
@@ -390,16 +348,18 @@ func (dev *BinaryDevice) getDataUSB() (bindata binaryData, err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB0)
+	binaryDataSize := len(bindata.data)
+	data := make([]byte, binaryDataSize)
 
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &bindata.data[0], uint32(len(bindata.data)),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB0, data, len(data))
 
 	if nil != err {
 		err = errors.New("BinaryDevice.getDataUSB():" + err.Error())
+		return
+	}
+
+	for i := 0; i < binaryDataSize; i++ {
+		bindata.data[i] = data[i]
 	}
 
 	return
@@ -416,36 +376,12 @@ func (dev *BinaryDevice) setDataUSB(bindata binaryData) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, bindata.data[:], len(bindata.data))
 
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &bindata.data[0], uint32(len(bindata.data)),
-		&bytesReturned, nil)
 	if nil != err {
 		err = errors.New("BinaryDevice.setDataUSB():" + err.Error())
 	}
 	return
-}
-
-//opened показывает открыто ли соединение с ФДС-3
-func (dev *BinaryDevice) opened() bool {
-	if nil == dev {
-		return false
-	}
-	return dev.handle != windows.InvalidHandle
-}
-
-/////////////////////ИНТЕРФЕЙСНЫЕ ФУНКЦИИ/////////////////////
-
-//Close закрыть соединение с ФДС-3
-func (dev *BinaryDevice) Close() {
-	if dev == nil {
-		return
-	}
-	windows.CloseHandle(dev.handle)
-	dev.handle = windows.InvalidHandle
 }
 
 //Open соединиться с ФДС-3
@@ -454,21 +390,6 @@ func (dev *BinaryDevice) Open() (ok bool) {
 		return
 	}
 	dev.handle, ok = USBOpen(IDProductBIN)
-	return
-}
-
-//Active показывает активно ли соединение с ФДС-3
-func (dev *BinaryDevice) Active() (ok bool) {
-	if dev == nil {
-		return
-	}
-	if dev.opened() {
-		vendorID, productID := GetVendorProduct(dev.handle)
-		if IDVendorElmeh == vendorID && IDProductBIN == productID {
-			ok = true
-			return
-		}
-	}
 	return
 }
 

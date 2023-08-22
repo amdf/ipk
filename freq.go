@@ -4,9 +4,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"errors"
-	"sync"
-
-	"golang.org/x/sys/windows"
 )
 
 //направление движения
@@ -19,30 +16,6 @@ const (
 const frqErrorNoConnection = `Нет соединения с ФАС-3`
 const frqErrorWrongParam = `Неверный параметр функции`
 const frqErrorNoDevice = `FreqDevice == nil`
-
-//FreqDevice это тип для работы с ФЧС-3
-type FreqDevice struct {
-	Device
-	handle         windows.Handle
-	ADC            DataADC
-	ADCModeEnabled bool
-	freqdata       dataFreq
-	Teeth          uint32
-	Diameter       uint32
-	mutexUSB       sync.Mutex
-}
-
-//Потокобезопасный обмен данными с микроконтроллером по USB.
-func (dev *FreqDevice) deviceIoControl(ioControlCode uint32, inBuffer *byte, inBufferSize uint32, outBuffer *byte, outBufferSize uint32, bytesReturned *uint32, overlapped *windows.Overlapped) (err error) {
-	if nil == dev {
-		err = errors.New("deviceIoControl():" + frqErrorNoDevice)
-		return
-	}
-	dev.mutexUSB.Lock()
-	err = windows.DeviceIoControl(dev.handle, ioControlCode, inBuffer, inBufferSize, outBuffer, outBufferSize, bytesReturned, overlapped)
-	dev.mutexUSB.Unlock()
-	return
-}
 
 const dataADCsize = 14
 
@@ -144,14 +117,9 @@ func (dev *FreqDevice) UpdateFreqDataUSB() (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB0)
-
 	freqbytes := make([]byte, dataFreqSize)
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &freqbytes[0], uint32(len(freqbytes)),
-		&bytesReturned, nil)
+
+	err = dev.deviceIoControl(VendorRequestInput, 0xB0, freqbytes, len(freqbytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.getFreqDataUSB():" + err.Error())
@@ -176,10 +144,6 @@ func (dev *FreqDevice) setLimitWayUSB(wayImpulseCount uint32) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
-
 	var dataout dataFreq
 	dataout.cmd = 6
 	dataout.limitWay1 = wayImpulseCount
@@ -187,10 +151,7 @@ func (dev *FreqDevice) setLimitWayUSB(wayImpulseCount uint32) (err error) {
 
 	freqbytes := dataout.toBytes()
 
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &freqbytes[0], uint32(len(freqbytes)),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, freqbytes, len(freqbytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.setCrsWayUSB():" + err.Error())
@@ -211,20 +172,14 @@ func (dev *FreqDevice) setFreqUSB(freq1, freq2 uint32) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
-
 	var dataout dataFreq
 	dataout.cmd = 2
 	dataout.freq1 = freq1
 	dataout.freq2 = freq2
 
 	freqbytes := dataout.toBytes()
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &freqbytes[0], uint32(len(freqbytes)),
-		&bytesReturned, nil)
+
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, freqbytes, len(freqbytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.setFreqUSB():" + err.Error())
@@ -245,9 +200,6 @@ func (dev *FreqDevice) setDeltaUSB(delta1, delta2 int32) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
-
 	var dataout dataFreq
 	dataout.cmd = 1
 	dataout.freq1delta = delta1
@@ -255,10 +207,7 @@ func (dev *FreqDevice) setDeltaUSB(delta1, delta2 int32) (err error) {
 
 	freqbytes := dataout.toBytes()
 
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &freqbytes[0], uint32(len(freqbytes)),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, freqbytes, len(freqbytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.setDeltaUSB():" + err.Error())
@@ -278,20 +227,14 @@ func (dev *FreqDevice) setWayCountUSB(way1, way2 uint32) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
-
 	var dataout dataFreq
 	dataout.cmd = 3
 	dataout.way1count = way1
 	dataout.way2count = way2
 
 	freqbytes := dataout.toBytes()
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &freqbytes[0], uint32(len(freqbytes)),
-		&bytesReturned, nil)
+
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, freqbytes, len(freqbytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.setDeltaUSB():" + err.Error())
@@ -311,9 +254,6 @@ func (dev *FreqDevice) setMotionUSB(direction uint8) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
-
 	var dataout dataFreq
 	dataout.cmd = 5
 	switch direction {
@@ -327,54 +267,12 @@ func (dev *FreqDevice) setMotionUSB(direction uint8) (err error) {
 	}
 
 	freqbytes := dataout.toBytes()
-	var bytesReturned uint32
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &freqbytes[0], uint32(len(freqbytes)),
-		&bytesReturned, nil)
+
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, freqbytes, len(freqbytes))
 
 	if nil != err {
 		err = errors.New("FreqDevice.setDeltaUSB():" + err.Error())
 	}
 
-	return
-}
-
-//opened показывает открыто ли соединение с ФЧС-3
-func (dev *FreqDevice) opened() bool {
-	if nil == dev {
-		return false
-	}
-	return dev.handle != windows.InvalidHandle
-}
-
-/////////////////////ИНТЕРФЕЙСНЫЕ ФУНКЦИИ/////////////////////
-
-//Close закрыть соединение с ФчС-3
-func (dev *FreqDevice) Close() {
-	if dev == nil {
-		return
-	}
-	windows.CloseHandle(dev.handle)
-	dev.handle = windows.InvalidHandle
-}
-
-//Open соединиться с ФЧС-3
-func (dev *FreqDevice) Open() (ok bool) {
-	dev.handle, ok = USBOpen(IDProductFRQ)
-	return
-}
-
-//Active показывает активно ли соединение с ФЧС-3
-func (dev *FreqDevice) Active() (ok bool) {
-	if dev == nil {
-		return
-	}
-	if dev.opened() {
-		vendorID, productID := GetVendorProduct(dev.handle)
-		if IDVendorElmeh == vendorID && IDProductFRQ == productID {
-			ok = true
-			return
-		}
-	}
 	return
 }

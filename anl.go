@@ -5,10 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"math"
-	"sync"
 	"time"
-
-	"golang.org/x/sys/windows"
 )
 
 const anlErrorNoConnection = `Нет соединения с ФАС-3`
@@ -16,7 +13,7 @@ const anlErrorWrongParam = `Неверный параметр функции`
 const anlErrorNoDevice = `FreqDevice == nil`
 const analogCount = 14
 
-//14 ЦАПов
+// 14 ЦАПов
 const (
 	DAC1 = iota
 	DAC2
@@ -88,28 +85,8 @@ func (data *analogDeviceData) setFromBytes(inbuf []byte) bool {
 
 ///////////////////////////////////////////////////////////////
 
-//AnalogDevice это тип для работы с ФАС-3
-type AnalogDevice struct {
-	Device
-	handle           windows.Handle
-	idProductVariant uint16
-	mutexUSB         sync.Mutex
-}
-
-//Потокобезопасный обмен данными с микроконтроллером по USB.
-func (dev *AnalogDevice) deviceIoControl(ioControlCode uint32, inBuffer *byte, inBufferSize uint32, outBuffer *byte, outBufferSize uint32, bytesReturned *uint32, overlapped *windows.Overlapped) (err error) {
-	if nil == dev {
-		err = errors.New("deviceIoControl():" + anlErrorNoDevice)
-		return
-	}
-	dev.mutexUSB.Lock()
-	err = windows.DeviceIoControl(dev.handle, ioControlCode, inBuffer, inBufferSize, outBuffer, outBufferSize, bytesReturned, overlapped)
-	dev.mutexUSB.Unlock()
-	return
-}
-
-//GetProductID С помощью этой функции можно узнать, какой вариант ФАС
-//используется, старый (12 бит) или новый (16 бит)
+// GetProductID С помощью этой функции можно узнать, какой вариант ФАС
+// используется, старый (12 бит) или новый (16 бит)
 func (dev *AnalogDevice) GetProductID() uint16 {
 	if nil != dev {
 		return dev.idProductVariant
@@ -119,10 +96,10 @@ func (dev *AnalogDevice) GetProductID() uint16 {
 
 ///////////////////////////////////////////////////////////////
 
-//setDAC задаёт значение на один из каналов ЦАП ФАС-3.
-//Параметр ch - номер канала. Значение от ipk.DAC1 до ipk.DAC14.
-//Параметр val - значение для вывода на ЦАП. Значение следует получить
-//с помощью одной из функций: MilliAmperToDAC, AtToDAC, KiloPascalToDAC
+// setDAC задаёт значение на один из каналов ЦАП ФАС-3.
+// Параметр ch - номер канала. Значение от ipk.DAC1 до ipk.DAC14.
+// Параметр val - значение для вывода на ЦАП. Значение следует получить
+// с помощью одной из функций: MilliAmperToDAC, AtToDAC, KiloPascalToDAC
 func (dev *AnalogDevice) setDAC(ch uint8, val uint16) (err error) {
 	if nil == dev {
 		err = errors.New("setDAC():" + anlErrorNoDevice)
@@ -156,9 +133,9 @@ func (dev *AnalogDevice) setDAC(ch uint8, val uint16) (err error) {
 	return
 }
 
-//getOutputDAC позволяет узнать, какое значение установлено в данный момент
-//на одном из каналов ЦАП ФАС-3.
-//Параметр ch - номер канала. Значение от ipk.DAC1 до ipk.DAC14.
+// getOutputDAC позволяет узнать, какое значение установлено в данный момент
+// на одном из каналов ЦАП ФАС-3.
+// Параметр ch - номер канала. Значение от ipk.DAC1 до ipk.DAC14.
 func (dev *AnalogDevice) getOutputDAC(ch uint8) (val uint16, err error) {
 	if nil == dev {
 		err = errors.New("getOutputDAC():" + anlErrorNoDevice)
@@ -180,7 +157,6 @@ func (dev *AnalogDevice) getOutputDAC(ch uint8) (val uint16, err error) {
 // milliAmper - миллиамперы.
 // maxDAC - максимально допустимое значение для ЦАП.
 // maxMilliAmper - максимальное значение миллиампер, соответствующее значению maxDAC.
-//
 func MilliAmperToDAC(milliAmper float64, maxDAC uint16, maxMilliAmper uint16) uint16 {
 	if 0 == maxMilliAmper {
 		return maxMilliAmper
@@ -190,10 +166,10 @@ func MilliAmperToDAC(milliAmper float64, maxDAC uint16, maxMilliAmper uint16) ui
 	return uint16(math.RoundToEven(fdac))
 }
 
-//ValueToMa переводит величину в заданный диапазон в мА
-//val - требуемое значение величины.
-//maxVal - максимальное значение величины.
-//minMilliAmper, maxMilliAmper - диапазон мА (0-5, 4-20).
+// ValueToMa переводит величину в заданный диапазон в мА
+// val - требуемое значение величины.
+// maxVal - максимальное значение величины.
+// minMilliAmper, maxMilliAmper - диапазон мА (0-5, 4-20).
 func ValueToMa(val, maxVal float64, minMilliAmper uint16, maxMilliAmper uint16) (milliAmper float64) {
 	if (0 >= maxVal) || (0 > val) || (minMilliAmper > maxMilliAmper) {
 		milliAmper = float64(maxMilliAmper)
@@ -205,12 +181,12 @@ func ValueToMa(val, maxVal float64, minMilliAmper uint16, maxMilliAmper uint16) 
 	return
 }
 
-//AtToDAC переводит давление ат в значение для ЦАП.
-//Под "ат" подразумевается килограмм-сила на квадратный сантиметр (кгс/см²) также называемая технической атмосферой.
-//at - требуемое значение давления.
-//maxAt - максимальное значение давления.
-//maxDAC - максимально допустимое значение для ЦАП.
-//minMilliAmper, maxMilliAmper - диапазон мА (0-5, 4-20).
+// AtToDAC переводит давление ат в значение для ЦАП.
+// Под "ат" подразумевается килограмм-сила на квадратный сантиметр (кгс/см²) также называемая технической атмосферой.
+// at - требуемое значение давления.
+// maxAt - максимальное значение давления.
+// maxDAC - максимально допустимое значение для ЦАП.
+// minMilliAmper, maxMilliAmper - диапазон мА (0-5, 4-20).
 func AtToDAC(at, maxAt float64, maxDAC uint16, minMilliAmper uint16, maxMilliAmper uint16) uint16 {
 	if (at < 0) || (maxAt <= 0) || (minMilliAmper > maxMilliAmper) || (at > maxAt) {
 		return maxDAC
@@ -222,11 +198,11 @@ func AtToDAC(at, maxAt float64, maxDAC uint16, minMilliAmper uint16, maxMilliAmp
 	return MilliAmperToDAC(milliAmper, maxDAC, maxMilliAmper)
 }
 
-//KiloPascalToDAC переводит давление кПа в значение для ЦАП.
-//kiloPascal - требуемое значение давления.
-//maxKiloPascal - максимальное значение давления.
-//maxDAC - максимально допустимое значение для ЦАП.
-//minMilliAmper, maxMilliAmper - диапазон мА (0-5, 4-20).
+// KiloPascalToDAC переводит давление кПа в значение для ЦАП.
+// kiloPascal - требуемое значение давления.
+// maxKiloPascal - максимальное значение давления.
+// maxDAC - максимально допустимое значение для ЦАП.
+// minMilliAmper, maxMilliAmper - диапазон мА (0-5, 4-20).
 func KiloPascalToDAC(kiloPascal, maxKiloPascal float64, maxDAC uint16, minMilliAmper uint16, maxMilliAmper uint16) uint16 {
 	if (kiloPascal < 0) || (maxKiloPascal <= 0) || (minMilliAmper > maxMilliAmper) || (kiloPascal > maxKiloPascal) {
 		return maxDAC
@@ -251,20 +227,13 @@ func (dev *AnalogDevice) getDataUSB(data *analogDeviceData) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-
-	vcrq := MakeVendorOrClassRequestControlStruct(1, 2, 0, 0xB0)
-
 	asbytes := make([]byte, data.Size())
 
-	var bytesReturned uint32
-
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &asbytes[0], uint32(len(asbytes)),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestInput, 0xB0, asbytes, len(asbytes))
 
 	if nil != err {
 		err = errors.New("AnalogDevice.getDataUSB():" + err.Error())
+		return
 	}
 
 	data.setFromBytes(asbytes)
@@ -283,41 +252,17 @@ func (dev *AnalogDevice) setDataUSB(data *analogDeviceData) (err error) {
 		return
 	}
 
-	iDesc := IoctlEZUSBVendorOrClassRequest()
-	vcrq := MakeVendorOrClassRequestControlStruct(0, 2, 0, 0xB0)
-
 	asbytes := data.toBytes()
-	var bytesReturned uint32
 
-	err = dev.deviceIoControl(
-		iDesc, &vcrq[0], uint32(len(vcrq)), &asbytes[0], uint32(len(asbytes)),
-		&bytesReturned, nil)
+	err = dev.deviceIoControl(VendorRequestOutput, 0xB0, asbytes, len(asbytes))
+
 	if nil != err {
 		err = errors.New("AnalogDevice.setDataUSB():" + err.Error())
 	}
 	return
 }
 
-//Opened показывает открыто ли соединение с ФАС-3
-func (dev *AnalogDevice) opened() bool {
-	if nil == dev {
-		return false
-	}
-	return dev.handle != windows.InvalidHandle
-}
-
-/////////////////////ИНТЕРФЕЙСНЫЕ ФУНКЦИИ/////////////////////
-
-//Close закрыть соединение с ФАС-3
-func (dev *AnalogDevice) Close() {
-	if dev == nil {
-		return
-	}
-	windows.CloseHandle(dev.handle)
-	dev.handle = windows.InvalidHandle
-}
-
-//Open соединиться с ФАС-3
+// Open соединиться с ФАС-3
 func (dev *AnalogDevice) Open() (ok bool) {
 	if dev == nil {
 		return
@@ -329,21 +274,6 @@ func (dev *AnalogDevice) Open() (ok bool) {
 		dev.handle, ok = USBOpen(IDProductANL16bit)
 		if ok {
 			dev.idProductVariant = IDProductANL16bit
-		}
-	}
-	return
-}
-
-//Active показывает активно ли соединение с ФАС-3
-func (dev *AnalogDevice) Active() (ok bool) {
-	if dev == nil {
-		return
-	}
-	if dev != nil && dev.opened() {
-		vendorID, productID := GetVendorProduct(dev.handle)
-		if IDVendorElmeh == vendorID && dev.idProductVariant == productID {
-			ok = true
-			return
 		}
 	}
 	return
